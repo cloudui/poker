@@ -1,4 +1,11 @@
 from treys import Card
+from enum import Enum
+
+class Action(Enum):
+    FOLD = 0
+    CALL = 1
+    RAISE = 2
+    CHECK = 3
 
 class RoundProfile:
     def __init__(self):
@@ -6,12 +13,14 @@ class RoundProfile:
         self.hand = None
         self.best_hand = None
         self.folded = False
+        self.last_action = None
 
     def reset(self):
         self.bet = 0
         self.hand = None
         self.best_hand = None
         self.folded = False
+        self.last_action = None
 
 class Player:
     def __init__(self, name, stack=100):
@@ -28,6 +37,23 @@ class Player:
     
     def fold(self):
         self.rp.folded = True
+        self.rp.last_action = Action.FOLD
+    
+    def check(self):
+        self.rp.last_action = Action.CHECK
+    
+    def call(self, amount):
+        current_bet = self.current_round_bet()
+        if amount < current_bet:
+            raise ValueError(f"Amount must be greater than or equal to {current_bet}")
+        
+        amount_to_call = amount - current_bet
+        self.bet(amount_to_call)
+        self.rp.last_action = Action.CALL
+    
+    def raise_bet(self, amount):
+        self.bet(amount)
+        self.rp.last_action = Action.RAISE
     
     def win(self, amount):
         self.stack += amount
