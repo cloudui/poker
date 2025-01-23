@@ -6,6 +6,9 @@ class Action(Enum):
     CALL = 1
     RAISE = 2
     CHECK = 3
+    BET = 4
+    SMALL_BLIND = 5
+    BIG_BLIND = 6
 
 class RoundProfile:
     def __init__(self):
@@ -30,10 +33,27 @@ class Player:
 
     def current_round_bet(self):
         return self.rp.bet
-    
-    def bet(self, amount):
+
+    def make_bet(self, amount):
+        if amount < 0:
+            raise ValueError("Amount must be greater than or equal to 0")
+        elif amount > self.stack:
+            raise ValueError("Amount must be less than or equal to stack")
+        
         self.stack -= amount
         self.rp.bet += amount
+
+    def post_small_blind(self, amount):
+        self.make_bet(amount)
+        self.rp.last_action = Action.SMALL_BLIND
+    
+    def post_big_blind(self, amount):
+        self.make_bet(amount)
+        self.rp.last_action = Action.BIG_BLIND
+    
+    def bet(self, amount):
+        self.make_bet(amount)
+        self.rp.last_action = Action.BET
     
     def fold(self):
         self.rp.folded = True
@@ -47,12 +67,17 @@ class Player:
         if amount < current_bet:
             raise ValueError(f"Amount must be greater than or equal to {current_bet}")
         
-        amount_to_call = amount - current_bet
-        self.bet(amount_to_call)
+        amount_to_call = self.amount_to_call(amount)
+        self.make_bet(amount_to_call)
         self.rp.last_action = Action.CALL
+
+        return amount_to_call
+    
+    def amount_to_call(self, amount):
+        return amount - self.current_round_bet()
     
     def raise_bet(self, amount):
-        self.bet(amount)
+        self.make_bet(amount)
         self.rp.last_action = Action.RAISE
     
     def win(self, amount):
