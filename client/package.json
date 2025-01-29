@@ -19,6 +19,7 @@
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@types/node": "^22.10.10",
 		"autoprefixer": "^10.4.20",
+		"daisyui": "^4.12.23",
 		"postcss": "^8.5.1",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
