@@ -102,6 +102,9 @@ class Player:
     def hand(self):
         return self.rp.hand
 
+    def str_hand(self):
+        return list(map(Card.int_to_str, self.rp.hand))
+
     def best_hand(self):
         return self.rp.best_hand
     
