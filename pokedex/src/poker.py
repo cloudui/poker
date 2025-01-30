@@ -100,6 +100,7 @@ class Round:
         self.players = [player for player in players[small_blind_index:] + players[:small_blind_index]]
         self.small_blind_player = self.players[0]
         self.big_blind_player = self.players[1]
+        self.player_index = 0
 
     def start_betting_round(self):
         if self.stage == GameStage.ROUND_OVER:
@@ -127,7 +128,7 @@ class Round:
             print(f"Small blind: {sb.name} auto-bets {self.small_blind}")
             print(f"Big blind: {bb.name} auto-bets {self.big_blind}")
 
-            self._post_blinds(sb, bb)
+            self.post_blinds()
             print()
 
         while True:
@@ -200,7 +201,10 @@ class Round:
 
         self.pot.set_last_bet_raise(player, amount)
 
-    def _post_blinds(self, sb: Player, bb: Player):
+    def post_blinds(self):
+        sb = self.small_blind_player
+        bb = self.big_blind_player
+
         sb.post_small_blind(self.small_blind)
         bb.post_big_blind(self.big_blind)
 
@@ -208,6 +212,26 @@ class Round:
 
         self.pot.add(self.small_blind)
         self.pot.add(self.big_blind)
+
+        self.player_index = 2 if len(self.players) > 2 else 0
+    
+    def get_current_player(self):
+        return self.players[self.player_index]
+    
+    def get_current_player_and_actions(self):
+        player = self.get_current_player()
+        actions = []
+        amount_to_call = player.amount_to_call(self.pot.call_amount())
+
+        if not self.pot.betting_started:
+            actions = [Action(Action.CHECK), Action(Action.BET, self.pot.minimum_bet)]
+        else:
+            if amount_to_call > 0:
+                actions = [Action.fold(), Action.call(amount_to_call), Action.raise_bet(self.pot.get_minimum_raise())]
+            else:
+                actions = [Action.check(), Action.bet(self.pot.minimum_bet)]
+        
+        return player, actions
 
     def _raise(self, player: Player, amount):
         if amount < self.pot.get_minimum_raise():

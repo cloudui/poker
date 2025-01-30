@@ -1,7 +1,7 @@
 from treys import Card
 from enum import Enum
 
-class Action(Enum):
+class ActionType(Enum):
     FOLD = 0
     CALL = 1
     RAISE = 2
@@ -9,6 +9,48 @@ class Action(Enum):
     BET = 4
     SMALL_BLIND = 5
     BIG_BLIND = 6
+
+class Action:
+    # type declarations
+    FOLD = ActionType.FOLD
+    CALL = ActionType.CALL
+    RAISE = ActionType.RAISE
+    CHECK = ActionType.CHECK
+    BET = ActionType.BET
+    SMALL_BLIND = ActionType.SMALL_BLIND
+    BIG_BLIND = ActionType.BIG_BLIND
+
+    def __init__(self, action_type, amount=None, amount_called=None):
+        self.action_type = action_type
+        self.amount = amount
+        self.amount_called = amount_called
+
+    @classmethod
+    def fold(cls):
+        return cls(Action.FOLD)
+
+    @classmethod
+    def check(cls):
+        return cls(Action.CHECK)
+    
+    @classmethod
+    def call(cls, amount_to_call):
+        return cls(Action.CALL, amount_called=amount_to_call)
+    
+    @classmethod
+    def bet(cls, amount=None):
+        return cls(Action.BET, amount)
+    
+    @classmethod
+    def raise_bet(cls, amount):
+        return cls(Action.RAISE, amount)
+    
+    def to_dict(self):
+        return {
+            "type": self.action_type.name,
+            "amount": self.amount,
+            "amount_called": self.amount_called
+        }
 
 class RoundProfile:
     def __init__(self):
@@ -49,22 +91,22 @@ class Player:
 
     def post_small_blind(self, amount):
         self.make_bet(amount)
-        self.rp.last_action = Action.SMALL_BLIND
+        self.rp.last_action = Action(Action.SMALL_BLIND, amount)
     
     def post_big_blind(self, amount):
         self.make_bet(amount)
-        self.rp.last_action = Action.BIG_BLIND
+        self.rp.last_action = Action(Action.BIG_BLIND, amount)
     
     def bet(self, amount):
         self.make_bet(amount)
-        self.rp.last_action = Action.BET
+        self.rp.last_action = Action(Action.BET, amount)
     
     def fold(self):
         self.rp.folded = True
-        self.rp.last_action = Action.FOLD
+        self.rp.last_action = Action(Action.FOLD)
     
     def check(self):
-        self.rp.last_action = Action.CHECK
+        self.rp.last_action = Action(Action.CHECK)
     
     def call(self, amount):
         current_bet = self.current_round_bet()
@@ -73,7 +115,7 @@ class Player:
         
         amount_to_call = self.amount_to_call(amount)
         self.make_bet(amount_to_call)
-        self.rp.last_action = Action.CALL
+        self.rp.last_action = Action(Action.CALL, amount, amount_to_call)
 
         return amount_to_call
     
@@ -83,7 +125,7 @@ class Player:
     def raise_bet(self, amount):
         amount_raised = amount - self.current_round_bet()
         self.make_bet(amount_raised)
-        self.rp.last_action = Action.RAISE
+        self.rp.last_action = Action(Action.RAISE, amount)
 
         return amount_raised
     

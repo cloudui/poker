@@ -21,6 +21,24 @@ CORS(app, resources={
 # Game state (preset for prototyping)
 game = None
 
+def get_turn():
+    global game
+
+    # Get the current player
+    player, actions = game["round"].get_current_player_and_actions()
+
+    # Prepare the game state to return
+    turn = {
+        "player": {
+            "name": player.name,
+            "stack": player.stack,
+            "hand": player.str_hand()
+        },
+        "actions": [action.to_dict() for action in actions],
+    }
+
+    return turn
+
 @app.route('/start_game', methods=['GET'])
 def start_game():
     global game
@@ -39,7 +57,12 @@ def start_game():
     # Deal cards and setup the round
     round = poker.new_round()
     round.deal()
+    round.post_blinds()
 
+    game = {
+        "poker": poker,
+        "round": round
+    }
     # Prepare the game state to return
     game_state = {
         "players": [
@@ -50,15 +73,19 @@ def start_game():
             } for player in round.players
         ],
         "stage": round.stage.name,
+        "pot": {
+            "amount": round.pot.amount,
+        },
+        "small_blind_player": round.small_blind_player.name,
+        "big_blind_player": round.big_blind_player.name,
+        "turn": get_turn()
     }
 
     # Save the game for later interactions
-    game = {
-        "poker": poker,
-        "round": round
-    }
 
     return jsonify(game_state)
+
+
 
 if __name__ == '__main__':
     # socketio.run(app, debug=True)
