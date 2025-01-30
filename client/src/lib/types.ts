@@ -2,6 +2,7 @@ type Player = {
   name: string;
   stack: number;
   hand: string[];
+  action?: Action;
 };
 
 type Game = {

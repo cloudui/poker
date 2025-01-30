@@ -11,6 +11,7 @@
   let smallBlindPlayer: string;
   let bigBlindPlayer: string;
   let turn: GameTurn;
+  let communityCards: string[] = [];
 
   let enableBet = false;
   let enableRaise = false;
@@ -23,6 +24,13 @@
   let foldAction: Action | null = null;
   let checkAction: Action | null = null;
   let callAction: Action | null = null;
+
+  let playerAction: Action = {
+    type: "",
+    amount: 0,
+    amountToCall: 0
+  }
+  let playerActionAmount = 0;
 
   async function handleStartGame() {
     try {
@@ -38,6 +46,61 @@
       pot = data.pot;
       smallBlindPlayer = data.small_blind_player;
       bigBlindPlayer = data.big_blind_player;
+      turn = data.turn;
+      parseActions(turn.actions);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  }
+
+  function playerCheck() {
+    playerAction.type = "check";
+    handlePlayerTurn();
+  }
+
+  function playerBet() {
+    playerAction.type = "bet";
+    playerAction.amount = playerActionAmount;
+    handlePlayerTurn();
+  }
+
+  function playerCall() {
+    playerAction.type = "call";
+    handlePlayerTurn();
+  }
+
+  function playerRaise() {
+    playerAction.type = "raise";
+    playerAction.amount = playerActionAmount;
+    handlePlayerTurn();
+  }
+
+  function playerFold() {
+    playerAction.type = "fold";
+    handlePlayerTurn();
+  }
+  
+  async function handlePlayerTurn() {
+    try {
+      const response = await fetch('http://localhost:5000/next_turn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          player_name: turn.player.name,
+          action: playerAction
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      console.log(data);
+      communityCards = data.community_cards;
+      players = data.players;
+      gameStage = data.stage;
+      pot = data.pot;
       turn = data.turn;
       parseActions(turn.actions);
     } catch (error) {
@@ -72,14 +135,35 @@
           break;
     }
   }
+}
 
-  function parseAction(action: any): Action {
-    return {
-      type: action.type,
-      amount: action.amount,
-      amountToCall: action.amount_called
-    }
+function parseAction(action: any): Action {
+  return {
+    type: action.type,
+    amount: action.amount,
+    amountToCall: action.amountToCall
   }
+}
+
+function actionString(action: Action) {
+  if (action.type === "CALL") {
+    return `CALL ${action.amountToCall}`;
+  } else if (action.type === "BET") {
+    return `BET ${action.amount}`;
+  } else if (action.type === "RAISE") {
+    return `RAISE ${action.amount}`;
+  } else if (action.type === "FOLD") {
+    return "FOLD";
+  } else if (action.type === "CHECK") {
+    return "CHECK";
+  } else if (action.type === "SMALL_BLIND") {
+    return "SMALL BLIND";
+  } else if (action.type === "BIG_BLIND") {
+    return "BIG BLIND";
+  }
+
+  return "ERROR";
+
 }
 
 </script>
@@ -134,13 +218,15 @@
     </div>
 
     <!-- Action List (centered buttons) -->
-    <div class="flex flex-row gap-4 mt-4 justify-center">
-      <button type="button" class="btn btn-neutral" disabled={!enableBet}> Bet (min ${betAction ? betAction.amount : ''}) </button>
-      <button type="button" class="btn" disabled={!enableCall}> Call (${callAction ? callAction.amountToCall : ''}) </button>
-      <button type="button" class="btn btn-primary" disabled={!enableRaise}> Raise </button>
-      <button type="button" class="btn btn-secondary" disabled={!enableFold}> Fold </button>
-      <button type="button" class="btn btn-accent" disabled={!enableCheck}> Check </button>
-
+    <div class="flex flex-col items-center gap-5">
+      <div class="flex flex-row gap-4 mt-4 justify-center">
+        <button type="button" class="btn btn-neutral" disabled={!enableBet} on:click={playerBet}> Bet (min ${betAction ? betAction.amount : ''}) </button>
+        <button type="button" class="btn" disabled={!enableCall} on:click={playerCall}> Call (${callAction ? callAction.amountToCall : ''}) </button>
+        <button type="button" class="btn btn-primary" disabled={!enableRaise} on:click={playerRaise}> Raise </button>
+        <button type="button" class="btn btn-secondary" disabled={!enableFold} on:click={playerFold}> Fold </button>
+        <button type="button" class="btn btn-accent" disabled={!enableCheck} on:click={playerCheck}> Check </button>
+      </div>
+      <input type="text" placeholder="Bet Amount" class="input input-bordered input-accent max-w-xs" />
     </div>
                
 
@@ -162,11 +248,8 @@
               <div>
                 <h2 class="card-title">{user.name}</h2>
                 <p class="text-sm text-gray-500">Stack: ${user.stack}</p>
-                {#if user.name === smallBlindPlayer}
-                  <p class="text-sm text-gray-500 font-bold">Small Blind</p>
-                {/if}
-                {#if user.name === bigBlindPlayer}
-                  <p class="text-sm text-gray-500 font-bold">Big Blind</p>
+                {#if user.action }
+                  <p class="text-sm text-accent">{actionString(user.action)}</p>
                 {/if}
               </div>
             </div>
