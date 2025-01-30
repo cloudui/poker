@@ -5,7 +5,7 @@ from enum import Enum
 
 # Assuming these classes are defined in your project
 from src.poker import Poker, Round, GameStage
-from src.player import Player
+from src.player import Player, Action
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -25,7 +25,7 @@ def get_turn():
     global game
 
     # Get the current player
-    player, actions = game["round"].get_current_player_and_actions()
+    player, actions = game.round.get_current_player_and_actions()
 
     # Prepare the game state to return
     turn = {
@@ -59,17 +59,15 @@ def start_game():
     round.deal()
     round.post_blinds()
 
-    game = {
-        "poker": poker,
-        "round": round
-    }
+    game = poker
     # Prepare the game state to return
     game_state = {
         "players": [
             {
                 "name": player.name,
                 "stack": player.stack,
-                "hand": player.str_hand()
+                "hand": player.str_hand(),
+                "action": player.rp.last_action.to_dict() if player.rp.last_action else None
             } for player in round.players
         ],
         "stage": round.stage.name,
@@ -86,6 +84,40 @@ def start_game():
     return jsonify(game_state)
 
 
+@app.route('/next_turn', methods=['POST'])
+def next_turn():
+    global game
+
+    # Get the current player
+
+    # Get the action from the request
+    action = request.json["action"]
+    player_name = request.json["player_name"]
+
+    action = Action.dict_to_action(action)
+
+    # Perform the action
+    game.round.player_action(player_name, action)
+
+    # Prepare the game state to return
+    game_state = {
+        "players": [
+            {
+                "name": player.name,
+                "stack": player.stack,
+                "hand": player.str_hand(),
+                "action": player.rp.last_action.to_dict() if player.rp.last_action else None
+            } for player in game.round.players
+        ],
+        "stage": game.round.stage.name,
+        "pot": {
+            "amount": game.round.pot.amount,
+        },
+        "turn": get_turn(),
+        "community_cards": game.round.board
+    }
+
+    return jsonify(game_state)
 
 if __name__ == '__main__':
     # socketio.run(app, debug=True)

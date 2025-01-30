@@ -20,10 +20,10 @@ class Action:
     SMALL_BLIND = ActionType.SMALL_BLIND
     BIG_BLIND = ActionType.BIG_BLIND
 
-    def __init__(self, action_type, amount=None, amount_called=None):
+    def __init__(self, action_type, amount=None, amount_to_call=None):
         self.action_type = action_type
         self.amount = amount
-        self.amount_called = amount_called
+        self.amount_to_call = amount_to_call
 
     @classmethod
     def fold(cls):
@@ -35,7 +35,7 @@ class Action:
     
     @classmethod
     def call(cls, amount_to_call):
-        return cls(Action.CALL, amount_called=amount_to_call)
+        return cls(Action.CALL, amount_to_call=amount_to_call)
     
     @classmethod
     def bet(cls, amount=None):
@@ -45,11 +45,20 @@ class Action:
     def raise_bet(cls, amount):
         return cls(Action.RAISE, amount)
     
+    @classmethod
+    def dict_to_action(cls, action_dict):
+        type_string = action_dict["type"].upper()
+        action_type = ActionType[type_string]
+        amount = action_dict["amount"]
+        amount_to_call = action_dict["amountToCall"]
+
+        return cls(action_type, amount, amount_to_call)
+    
     def to_dict(self):
         return {
             "type": self.action_type.name,
             "amount": self.amount,
-            "amount_called": self.amount_called
+            "amountToCall": self.amount_to_call
         }
 
 class RoundProfile:

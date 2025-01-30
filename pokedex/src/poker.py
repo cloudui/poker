@@ -233,6 +233,32 @@ class Round:
         
         return player, actions
 
+    def player_action(self, player_name: str, action):
+        player = self.get_current_player()
+        if player_name != player.name:
+            raise ValueError("Not the current player")
+        
+        if action.action_type == Action.FOLD:
+            self._fold(player)
+            # remove player from list
+            self.players = [player for player in self.players if not player.folded()]
+            self.player_index -= 1
+        elif action.action_type == Action.CALL:
+            self._call(player)
+        elif action.action_type == Action.RAISE:
+            self._raise(player, action.amount)
+        elif action.action_type == Action.CHECK:
+            self._check(player)
+        elif action.action_type == Action.BET:
+            self._bet(player, action.amount)
+        else:
+            raise ValueError("Invalid action")
+    
+        self.player_index += 1 
+        if self.player_index == len(self.players):
+            self.player_index = 0
+        
+
     def _raise(self, player: Player, amount):
         if amount < self.pot.get_minimum_raise():
             raise ValueError("Raise amount is less than minimum raise")
