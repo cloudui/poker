@@ -18,8 +18,7 @@
       justify-content: center;
       align-items: center;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      border-radius: 8px;
-      overflow: hidden;
+      border-radius: 3px;
       background-color: white;
     }
   
