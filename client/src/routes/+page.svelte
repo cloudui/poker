@@ -1,7 +1,7 @@
 <script lang="ts">
   import { startGame } from "$lib/poker";
   import { onMount } from "svelte";
-  import type {Player, Game, Pot, GameTurn, Action } from "$lib/types";
+  import type {Player, Game, Pot, GameTurn, Action, Winner } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
 
   let gameStarted = false;
@@ -30,7 +30,9 @@
     amount: 0,
     amountToCall: 0
   }
-  let playerActionAmount = 0;
+  let playerActionAmount = "";
+
+  let winner: Winner | null = null;
 
   async function handleStartGame() {
     try {
@@ -53,6 +55,31 @@
     }
   }
 
+  async function nextRound() {
+    try {
+      const response = await fetch('http://localhost:5000/next_round', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+      const data = await response.json();
+      console.log(data);
+      communityCards = data.community_cards;
+      players = data.players;
+      gameStage = data.stage;
+      gameStarted = true;
+      pot = data.pot;
+      smallBlindPlayer = data.small_blind_player;
+      bigBlindPlayer = data.big_blind_player;
+      turn = data.turn;
+      clearActions();
+      parseActions(turn.actions);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  }
+
   function playerCheck() {
     playerAction.type = "check";
     handlePlayerTurn();
@@ -60,7 +87,7 @@
 
   function playerBet() {
     playerAction.type = "bet";
-    playerAction.amount = playerActionAmount;
+    playerAction.amount = parseInt(playerActionAmount);
     handlePlayerTurn();
   }
 
@@ -71,7 +98,7 @@
 
   function playerRaise() {
     playerAction.type = "raise";
-    playerAction.amount = playerActionAmount;
+    playerAction.amount =parseInt(playerActionAmount);
     handlePlayerTurn();
   }
 
@@ -102,7 +129,9 @@
       gameStage = data.stage;
       pot = data.pot;
       turn = data.turn;
+      clearActions();
       parseActions(turn.actions);
+      winner = data.winner;
     } catch (error) {
       console.error('Fetch error:', error);
     }
@@ -145,6 +174,16 @@ function parseAction(action: any): Action {
   }
 }
 
+function clearActions() {
+  playerActionAmount = "";
+
+  enableBet = false;
+  enableRaise = false;
+  enableFold = false;
+  enableCheck = false;
+  enableCall = false;
+}
+
 function actionString(action: Action) {
   if (action.type === "CALL") {
     return `CALL ${action.amountToCall}`;
@@ -183,12 +222,45 @@ function actionString(action: Action) {
       <div class="stat place-items-center">
         <div class="stat-title">Current pot</div>
         <div class="stat-value">${pot.amount}</div>
-        <div class="stat-desc">Current Round Pot</div>
       </div>
+    </div>
+    <div class="flex gap-4 mt-3 mb-5">
+      {#each communityCards as card (card)}
+        <Card card={card} />
+      {/each}
     </div>
   </section>
 
+  {#if gameStage === "ROUND_OVER"}
+    <div class="flex flex-col items-center gap-5">
+      <button type="button" class="btn btn-accent" on:click={nextRound}> Next Round </button>
+    </div>
+  {/if}
+
   <div class="container mx-auto py-6">
+    {#if winner}
+      <div class="modal" open>
+        <div class="modal-box">
+          <h3 class="text-lg font-bold">Winner</h3>
+          {#each winner.players as player}
+            <p class="text-primary mb-2">{player.name}</p>
+          {/each}  
+          {#if winner.hand}
+          <div class="flex flex-row gap-2 mb-2">
+              {#each winner.hand as card (card)}
+                <Card card={card} />
+              {/each}
+          </div>
+          {/if}
+          <p class="mb-10">{winner.rank}</p>
+        
+          <div class="modal-action">
+            <button class="btn" on:click={winner = null}>Close</button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <h2 class="text-2xl font-bold text-center mb-2">Player Turn: {turn.player.name}</h2>
 
     
@@ -221,12 +293,16 @@ function actionString(action: Action) {
     <div class="flex flex-col items-center gap-5">
       <div class="flex flex-row gap-4 mt-4 justify-center">
         <button type="button" class="btn btn-neutral" disabled={!enableBet} on:click={playerBet}> Bet (min ${betAction ? betAction.amount : ''}) </button>
-        <button type="button" class="btn" disabled={!enableCall} on:click={playerCall}> Call (${callAction ? callAction.amountToCall : ''}) </button>
-        <button type="button" class="btn btn-primary" disabled={!enableRaise} on:click={playerRaise}> Raise </button>
+        <button type="button" class="btn" disabled={!enableCall} on:click={playerCall}> 
+          Call (${callAction ? callAction.amountToCall : ''}) 
+        </button>
+        <button type="button" class="btn btn-primary" disabled={!enableRaise} on:click={playerRaise}> 
+          Raise (${raiseAction ? raiseAction.amount : ''}) 
+        </button>
         <button type="button" class="btn btn-secondary" disabled={!enableFold} on:click={playerFold}> Fold </button>
         <button type="button" class="btn btn-accent" disabled={!enableCheck} on:click={playerCheck}> Check </button>
       </div>
-      <input type="text" placeholder="Bet Amount" class="input input-bordered input-accent max-w-xs" />
+      <input type="text" placeholder="Bet Amount" class="input input-bordered input-accent max-w-xs" bind:value={playerActionAmount} />
     </div>
                
 
