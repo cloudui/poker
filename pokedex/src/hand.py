@@ -1,10 +1,14 @@
 from treys import Evaluator
 from itertools import combinations
+from treys import Card
 
 class Hand:
     def __init__(self, cards, rank):
         self.cards = cards
         self.rank = rank
+
+    def ints_to_str(hand):
+        return [Card.int_to_str(i) for i in hand]
     
     def __repr__(self):
         return f"{self.cards} ({self.rank})"  

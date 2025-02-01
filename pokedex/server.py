@@ -6,6 +6,7 @@ from enum import Enum
 # Assuming these classes are defined in your project
 from src.poker import Poker, Round, GameStage
 from src.player import Player, Action
+from src.hand import Hand
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -45,9 +46,9 @@ def start_game():
 
     # Define three players with preset names and stacks
     players = [
-        Player(name="Harry Potter"),
-        Player(name="Cho Chang"),
-        Player(name="Luna Lovegood")
+        Player("Harry Potter"),
+        Player("Cho Chang"),
+        Player("Luna Lovegood")
     ]
     
     # Initialize a poker game with small blind of 10
@@ -62,24 +63,39 @@ def start_game():
     game = poker
     # Prepare the game state to return
     game_state = {
-        "players": [
-            {
-                "name": player.name,
-                "stack": player.stack,
-                "hand": player.str_hand(),
-                "action": player.rp.last_action.to_dict() if player.rp.last_action else None
-            } for player in round.players
-        ],
+        "players": [player.to_dict() for player in round.players],
         "stage": round.stage.name,
         "pot": {
             "amount": round.pot.amount,
         },
-        "small_blind_player": round.small_blind_player.name,
-        "big_blind_player": round.big_blind_player.name,
-        "turn": get_turn()
+        "turn": get_turn(),
+        "community_cards": Hand.ints_to_str(round.board),
     }
 
     # Save the game for later interactions
+
+    return jsonify(game_state)
+
+@app.route('/next_round', methods=['POST'])
+def next_round():
+    global game
+    
+    # Deal cards and setup the round
+    round = game.new_round()
+    round.deal()
+    round.post_blinds()
+
+    # Prepare the game state to return
+    game_state = {
+        "players": [player.to_dict() for player in round.players],
+        "stage": round.stage.name,
+        "pot": {
+            "amount": round.pot.amount,
+        },
+        "turn": get_turn(),
+        "community_cards": Hand.ints_to_str(round.board),
+    }
+
 
     return jsonify(game_state)
 
@@ -87,6 +103,7 @@ def start_game():
 @app.route('/next_turn', methods=['POST'])
 def next_turn():
     global game
+    round = game.round
 
     # Get the current player
 
@@ -97,25 +114,29 @@ def next_turn():
     action = Action.dict_to_action(action)
 
     # Perform the action
-    game.round.player_action(player_name, action)
+    round.player_action(player_name, action)
 
     # Prepare the game state to return
     game_state = {
-        "players": [
-            {
-                "name": player.name,
-                "stack": player.stack,
-                "hand": player.str_hand(),
-                "action": player.rp.last_action.to_dict() if player.rp.last_action else None
-            } for player in game.round.players
-        ],
-        "stage": game.round.stage.name,
+        "players": [player.to_dict() for player in round.players],
+        "stage": round.stage.name,
         "pot": {
-            "amount": game.round.pot.amount,
+            "amount": round.pot.amount,
         },
         "turn": get_turn(),
-        "community_cards": game.round.board
+        "community_cards": Hand.ints_to_str(round.board),
     }
+
+    if round.betting_round_over():
+        players, hand, rank = round.reveal()
+        game_state["winner"] = {
+            "players": [player.to_dict() for player in players],
+            "hand": Hand.ints_to_str(hand) if hand else None,
+            "rank": rank
+        }
+
+        round.distribute_winnings(players)
+
 
     return jsonify(game_state)
 

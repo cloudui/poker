@@ -1,5 +1,6 @@
 from treys import Card
 from enum import Enum
+from src.hand import Hand
 
 class ActionType(Enum):
     FOLD = 0
@@ -164,12 +165,23 @@ class Player:
     
     def last_action(self):
         return self.rp.last_action
+    
+    def last_action_was(self, action_type):
+        return self.rp.last_action.action_type == action_type
  
     def next_stage(self):
         self.rp.next_stage()
         
     def reset(self):
         self.rp.reset()
+    
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "stack": self.stack,
+            "hand": Hand.ints_to_str(self.rp.hand) if self.rp.hand else None,
+            "action": self.rp.last_action.to_dict() if self.rp.last_action else None
+        }
     
     def __repr__(self):
         res = f"{self.name:<15} {self.stack:<5}"

@@ -60,15 +60,6 @@ class Pot:
         self.betting_started = False
         self.current_round_bet = 0
     
-    def distribute_winnings(self, players):
-        n = len(players) 
-        split = self.amount // n
-
-        for player in players:
-            player.win(split)
-        
-        self.reset()
-    
     def round_stats_str(self):
         return f"Current round total: {self.current_round_bet}\nPot Total: {self.amount}"
 
@@ -223,10 +214,15 @@ class Round:
         actions = []
         amount_to_call = player.amount_to_call(self.pot.call_amount())
 
+        if self.betting_round_over():
+            return player, []
+
         if not self.pot.betting_started:
             actions = [Action(Action.CHECK), Action(Action.BET, self.pot.minimum_bet)]
         else:
-            if amount_to_call > 0:
+            if amount_to_call == 0 and player == self.big_blind_player and self.stage == GameStage.PREFLOP:
+                actions = [Action(Action.CHECK), Action.raise_bet(self.pot.get_minimum_raise())]
+            elif amount_to_call > 0:
                 actions = [Action.fold(), Action.call(amount_to_call), Action.raise_bet(self.pot.get_minimum_raise())]
             else:
                 actions = [Action.check(), Action.bet(self.pot.minimum_bet)]
@@ -253,10 +249,25 @@ class Round:
             self._bet(player, action.amount)
         else:
             raise ValueError("Invalid action")
-    
-        self.player_index += 1 
-        if self.player_index == len(self.players):
-            self.player_index = 0
+        
+        # determine if move to next stage
+        if len(self.players) == 1:
+            self.stage = GameStage.ROUND_OVER
+            return
+        
+        if player == self.big_blind_player and self.stage == GameStage.PREFLOP and player.last_action_was(Action.CHECK):
+            self._next_stage()
+            return
+        
+        self._next_player()
+        
+        next_player = self.get_current_player()
+        last_player_raise, _ = self.pot.get_last_bet_raise()
+        big_blind_preflop = (next_player == self.big_blind_player and self.stage == GameStage.PREFLOP)
+
+        if ((not big_blind_preflop and last_player_raise == next_player) or 
+            (self.player_index == 0 and not self.pot.betting_started and next_player.last_action_was(Action.CHECK))):
+            self._next_stage()
         
 
     def _raise(self, player: Player, amount):
@@ -282,7 +293,14 @@ class Round:
         for player in self.players:
             player.set_cards(self.deck.draw(2))
 
+    def _next_player(self):
+        self.player_index += 1
+        if self.player_index == len(self.players):
+            self.player_index = 0
+
     def _next_stage(self):
+        self.player_index = 0
+
         for player in self.players:
             player.next_stage()
         
@@ -305,9 +323,11 @@ class Round:
     
         if len(self.board) < 5:
             print(f"Winner\n{self.players[0]}")
-            return
+            return [self.players[0]], None, None
         
-        winner = []
+        winners = []
+        winning_hand = None
+        winning_rank = None
         best_ev = 10_000
 
         for player in self.players:
@@ -316,11 +336,26 @@ class Round:
 
             if ev < best_ev:
                 best_ev = ev
-                winner = [player]
+                winners= [player]
+                winning_hand = hand
+                winning_rank = rank
             elif ev == best_ev:
-                winner.append(player)
+                winners.append(player)
         
-        print(f"Winner: {', '.join([player.name for player in winner])}")
+        print(f"Winner: {', '.join([player.name for player in winners])}")
+
+        return winners, winning_hand, winning_rank
+    
+    def distribute_winnings(self, players: list[Player]):
+        print('distwin')
+        n = len(players) 
+        split = self.pot.amount // n
+
+        for player in players:
+            player.win(split)
+
+    def board_str(self):
+        return list(map(Card.int_to_str, self.board))
     
     def __repr__(self):
         res = f"Stage: {self.stage.name.capitalize()}\n"
