@@ -207,6 +207,7 @@ class Round:
         self.player_index = 2 if len(self.players) > 2 else 0
     
     def get_current_player(self):
+        print(self.player_index, self.players)
         return self.players[self.player_index]
     
     def get_current_player_and_actions(self):
@@ -220,7 +221,10 @@ class Round:
         if not self.pot.betting_started:
             actions = [Action(Action.CHECK), Action(Action.BET, self.pot.minimum_bet)]
         else:
-            if amount_to_call == 0 and player == self.big_blind_player and self.stage == GameStage.PREFLOP:
+            if (amount_to_call == 0 
+                and player == self.big_blind_player 
+                and self.stage == GameStage.PREFLOP
+                and player.last_action_was(Action.BIG_BLIND)):
                 actions = [Action(Action.CHECK), Action.raise_bet(self.pot.get_minimum_raise())]
             elif amount_to_call > 0:
                 actions = [Action.fold(), Action.call(amount_to_call), Action.raise_bet(self.pot.get_minimum_raise())]
@@ -233,7 +237,7 @@ class Round:
         player = self.get_current_player()
         if player_name != player.name:
             raise ValueError("Not the current player")
-        
+
         if action.action_type == Action.FOLD:
             self._fold(player)
             # remove player from list
@@ -263,7 +267,9 @@ class Round:
         
         next_player = self.get_current_player()
         last_player_raise, _ = self.pot.get_last_bet_raise()
-        big_blind_preflop = (next_player == self.big_blind_player and self.stage == GameStage.PREFLOP)
+        big_blind_preflop = (next_player == self.big_blind_player 
+                             and self.stage == GameStage.PREFLOP 
+                             and next_player.last_action_was(Action.BIG_BLIND))
 
         if ((not big_blind_preflop and last_player_raise == next_player) or 
             (self.player_index == 0 and not self.pot.betting_started and next_player.last_action_was(Action.CHECK))):
@@ -367,6 +373,11 @@ class Round:
     
 
 class Poker:
+    players: list[Player]
+    small_blind: int
+    big_blind: int
+    round: Round
+
     def __init__(self, players: list[Player]=[], small_blind=10):
         self.players = players
         self.small_blind = small_blind
@@ -394,6 +405,9 @@ class Poker:
     def new_round(self): 
         if not self.players or len(self.players) < 2:
             raise ValueError("Not enough players to start a round")
+        
+        for player in self.players:
+            player.reset()
 
         new_round =  Round(self.players, self.small_blind)
         self.round = new_round
