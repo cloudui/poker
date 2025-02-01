@@ -14,6 +14,8 @@ type Pot = {
     amount: number;
 }
 
+type Card = string;
+
 type Action = {
     type: string;
     
@@ -21,11 +23,16 @@ type Action = {
     amountToCall?: number;
 }
 
-
 type GameTurn = {
     player: Player;
     actions: Action[];
 }
 
+type Winner = {
+    players: Player[];
+    hand?: Card[];
+    rank?: string;
+};
+
 // export all
-export type { Player, Game, Pot, GameTurn, Action };
+export type { Player, Game, Pot, Card, Action, GameTurn, Winner };
