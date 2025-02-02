@@ -79,7 +79,7 @@ class Round:
     small_blind_player: Player
     big_blind_player: Player
 
-    def __init__(self, players: list[Player], small_blind, small_blind_index=0):
+    def __init__(self, players: list[Player], small_blind):
         self.pot = Pot(small_blind*2)
         self.deck = Deck()
         self.board = []
@@ -88,7 +88,7 @@ class Round:
         self.stage = GameStage.PREFLOP
         self.evaluator = HandEvaluator()
 
-        self.players = [player for player in players[small_blind_index:] + players[:small_blind_index]]
+        self.players = players
         self.small_blind_player = self.players[0]
         self.big_blind_player = self.players[1]
         self.player_index = 0
@@ -377,12 +377,14 @@ class Poker:
     small_blind: int
     big_blind: int
     round: Round
+    small_blind_index: int
 
     def __init__(self, players: list[Player]=[], small_blind=10):
         self.players = players
         self.small_blind = small_blind
         self.big_blind = 2*small_blind
         self.round = None
+        self.small_blind_index = 0
 
     def setup_game(self, players, small_blind):
         self.players = players
@@ -409,7 +411,15 @@ class Poker:
         for player in self.players:
             player.reset()
 
-        new_round =  Round(self.players, self.small_blind)
+        round_players = self.players[self.small_blind_index:] + self.players[:self.small_blind_index]
+        new_round =  Round(round_players, self.small_blind)
         self.round = new_round
 
+        self._next_small_blind()
+
         return new_round
+    
+    def _next_small_blind(self):
+        self.small_blind_index += 1
+        if self.small_blind_index == len(self.players):
+            self.small_blind_index = 0

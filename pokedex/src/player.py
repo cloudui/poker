@@ -25,6 +25,7 @@ class Action:
         self.action_type = action_type
         self.amount = amount
         self.amount_to_call = amount_to_call
+        self.all_in = False
 
     @classmethod
     def fold(cls):
