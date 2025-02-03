@@ -21,11 +21,11 @@ class Action:
     SMALL_BLIND = ActionType.SMALL_BLIND
     BIG_BLIND = ActionType.BIG_BLIND
 
-    def __init__(self, action_type, amount=None, amount_to_call=None):
+    def __init__(self, action_type, amount=None, amount_to_call=None, all_in=False):
         self.action_type = action_type
         self.amount = amount
         self.amount_to_call = amount_to_call
-        self.all_in = False
+        self.all_in = all_in
 
     @classmethod
     def fold(cls):
@@ -36,7 +36,7 @@ class Action:
         return cls(Action.CHECK)
     
     @classmethod
-    def call(cls, amount_to_call):
+    def call(cls, amount_to_call=None):
         return cls(Action.CALL, amount_to_call=amount_to_call)
     
     @classmethod
@@ -63,6 +63,26 @@ class Action:
             "amountToCall": self.amount_to_call
         }
 
+    def __repr__(self):
+        if self.all_in:
+            return f"ALL-IN {self.amount}"
+        elif self.action_type == Action.FOLD:
+            return "FOLD"
+        elif self.action_type == Action.CHECK:
+            return "CHECK"
+        elif self.action_type == Action.CALL:
+            return f"CALL {self.amount_to_call} ({self.amount})"
+        elif self.action_type == Action.BET:
+            return f"BET {self.amount}"
+        elif self.action_type == Action.RAISE:
+            return f"RAISE {self.amount}"
+        elif self.action_type == Action.SMALL_BLIND:
+            return f"SMALL BLIND {self.amount}"
+        elif self.action_type == Action.BIG_BLIND:
+            return f"BIG BLIND {self.amount}"
+        
+        return "UNKNOWN Action"
+
 class RoundProfile:
     def __init__(self):
         self.bet = 0
@@ -70,6 +90,7 @@ class RoundProfile:
         self.best_hand = None
         self.folded = False
         self.last_action = None
+        self.all_in = False
 
     def next_stage(self):
         self.bet = 0
@@ -109,8 +130,16 @@ class Player:
         self.rp.last_action = Action(Action.BIG_BLIND, amount)
     
     def bet(self, amount):
+        all_in = False
+
+        if amount <= 0 or amount > self.stack:
+            raise ValueError("Amount must be greater than or equal to 0 and less than or equal to stack")
+        elif amount == self.stack:
+            self.rp.all_in = True
+            all_in = True
+
         self.make_bet(amount)
-        self.rp.last_action = Action(Action.BET, amount)
+        self.rp.last_action = Action(Action.BET, amount, all_in=all_in)
     
     def fold(self):
         self.rp.folded = True
@@ -124,21 +153,39 @@ class Player:
         if amount < current_bet:
             raise ValueError(f"Amount must be greater than or equal to {current_bet}")
         
+        all_in = False
         amount_to_call = self.amount_to_call(amount)
-        self.make_bet(amount_to_call)
-        self.rp.last_action = Action(Action.CALL, amount, amount_to_call)
 
-        return amount_to_call
+        if amount_to_call > self.stack:
+            amount = self.stack
+            amount_to_call = self.stack
+            self.rp.all_in = True
+            all_in = True
+
+        self.make_bet(amount_to_call)
+        self.rp.last_action = Action(Action.CALL, amount, amount_to_call, all_in=all_in)
+
+        return amount_to_call, all_in
     
     def amount_to_call(self, amount):
         return amount - self.current_round_bet()
     
     def raise_bet(self, amount):
+        if amount < 0:
+            raise ValueError("Raise amount must be greater than or equal to 0")
+        
+        all_in = False
         amount_raised = amount - self.current_round_bet()
-        self.make_bet(amount_raised)
-        self.rp.last_action = Action(Action.RAISE, amount)
+        if amount > self.stack or amount_raised < 0:
+            raise ValueError("Raise amount must be positive and less than or equal to stack")
+        elif amount == self.stack:
+            self.rp.all_in = True
+            
 
-        return amount_raised
+        self.make_bet(amount_raised)
+        self.rp.last_action = Action(Action.RAISE, amount, all_in=all_in)
+
+        return amount_raised, all_in
     
     def win(self, amount):
         self.stack += amount
@@ -164,7 +211,7 @@ class Player:
     def folded(self):
         return self.rp.folded
     
-    def last_action(self):
+    def last_action(self) -> Action:
         return self.rp.last_action
     
     def last_action_was(self, action_type):
