@@ -49,6 +49,7 @@
       smallBlindPlayer = data.small_blind_player;
       bigBlindPlayer = data.big_blind_player;
       turn = data.turn;
+      communityCards = data.community_cards;
       parseActions(turn!.actions);
     } catch (error) {
       console.error('Fetch error:', error);
