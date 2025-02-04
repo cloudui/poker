@@ -243,7 +243,6 @@ class Round:
             return
 
         if len(self.action_complete_players) == len(self.players):
-            print(self.action_complete_players)
             self._next_stage()
             return 
 
@@ -328,14 +327,11 @@ class Round:
         return index
     
     def set_stage(self, stage: GameStage):
-        if stage == GameStage.FLOP:
-            self._next_stage()
-        elif stage == GameStage.TURN:
-            self._next_stage()
-            self._next_stage()
-        elif stage == GameStage.RIVER:
-            self._next_stage()
-            self._next_stage()
+        stage_jumps = stage.value - self.stage.value
+        if stage_jumps < 0:
+            raise ValueError("Cannot go back to previous stage")
+        
+        for _ in range(stage_jumps):
             self._next_stage()
 
 
@@ -351,6 +347,16 @@ class Round:
     def current_stage_actions(self):
         return self.round_actions[self.stage]
     
+    def get_hand_rankings(self):
+        unique_hands: dict[int, Hand] = {}
+        for player in self.players:
+            hand, rank, eval = self.evaluator.best_hand_rank_eval(player.hand(), self.board)
+            if eval not in unique_hands:
+                unique_hands[eval] = (Hand(hand, rank, eval), [])
+            unique_hands[eval][1].append(player)
+
+        return sorted(unique_hands.values(), key=lambda x: x[0].eval)
+
     def reveal(self):
         if not self.betting_round_over():
             raise ValueError("Cannot reveal cards before the river")
@@ -362,30 +368,42 @@ class Round:
         winners = []
         winning_hand = None
         winning_rank = None
-        best_ev = 10_000
 
-        for player in self.players:
-            hand, rank, ev = self.evaluator.best_hand_rank_eval(player.hand(), self.board)
-            print(f"{player.name:<15} {rank:<15} {Card.ints_to_pretty_str(hand)}")
+        hand_rankings = self.get_hand_rankings()
 
-            if ev < best_ev:
-                best_ev = ev
-                winners= [player]
-                winning_hand = hand
-                winning_rank = rank
-            elif ev == best_ev:
-                winners.append(player)
-        
+        winning_hand, winners = hand_rankings[0]
+
+        winning_rank = winning_hand.rank
+        winning_cards = winning_hand.cards
         print(f"Winner: {', '.join([player.name for player in winners])}")
 
-        return winners, winning_hand, winning_rank
+        return winners, winning_cards, winning_rank
     
-    def distribute_winnings(self, players: list[Player]):
-        n = len(players) 
-        split = self.pot.amount // n
+    def distribute_winnings(self):
+        if not self.betting_round_over():
+            raise ValueError("Cannot distribute winnings before the river")
+        pots = self.pot.final_pots()
+        player_rankings = [x[1] for x in self.get_hand_rankings()]
+        pot_winners = []
 
-        for player in players:
-            player.win(split)
+        for pot, eligible_players in pots:
+            pot_winner = []
+            for players in player_rankings:
+                for player in players:
+                    if player in eligible_players:
+                        pot_winner.append(player)
+                if len(pot_winner) != 0:
+                    break
+            pot_winners.append(pot_winner)
+        
+        for i, (pot, _) in enumerate(pots):
+            if pot == 0:
+                continue
+            print(f"Pot {i+1} ({pot}): {', '.join([player.name for player in pot_winners[i]])}")
+            split = pot // len(pot_winners[i])
+            for player in pot_winners[i]:
+                player.win(split)
+
 
     def board_str(self):
         return list(map(Card.int_to_str, self.board))
@@ -439,7 +457,6 @@ class Round:
             res += f'{str(player)}\n'
         
         return res
-    
 
 class Poker:
     players: list[Player]

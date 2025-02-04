@@ -89,4 +89,30 @@ def test3():
     # print(round)
     print(round.str_actions())
 
-test3()
+def test4():
+    players = [
+        Player("Harry Potter", 50),
+        Player("Cho Chang", 1000),
+        Player("Luna Lovegood", 75),
+    ]
+
+    poker = Poker(players=players, small_blind=10)
+
+    round = poker.new_round()
+    round.deal()
+    round.set_stage(GameStage.RIVER)
+
+    round.player_action(Action.bet(50))
+    round.player_action(Action.raise_bet(1000))
+    round.player_action(Action.call()) 
+
+    print(round)
+    round.distribute_winnings()
+
+    print(round.players)
+
+    print()
+
+    # print(round)
+    print(round.str_actions())
+test4()

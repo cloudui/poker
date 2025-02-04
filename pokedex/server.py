@@ -92,7 +92,7 @@ def next_turn():
         players, hand, rank = round.reveal()
         game_state["winner"] = {
             "players": [player.to_dict() for player in players],
-            "hand": Hand.ints_to_str(hand) if hand else None,
+            "hand": Hand.ints_to_str(hand),
             "rank": rank
         }
 

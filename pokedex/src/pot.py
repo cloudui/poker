@@ -2,7 +2,7 @@ from .player import Player
 
 class Pot:
     amount: int
-    side_pots: list
+    side_pots: list[tuple[int, set[Player]]]
     last_bet_raise: tuple
     min_raise_amount: int
     betting_started: bool
@@ -48,7 +48,7 @@ class Pot:
     def call_amount(self):
         return self.last_bet_raise[1]
     
-    def split_pot(self):
+    def split_pot(self, final=False):
         players = self.contributions.keys()
 
         all_in_amts = sorted([self.contributions[player] for player in players if player.all_in()])
@@ -58,27 +58,36 @@ class Pot:
         last_amount = 0
         for amount in all_in_amts:
             amount_diff = amount - last_amount
-            eligible_players = []
+            eligible_players = set()
             side_pot_amount = 0
             # print('pot')
             for player in players:
                 # print(player.name, contributions[player], amount_diff)
                 if contributions[player] >= amount_diff:
-                    
                     side_pot_amount += amount_diff
                     contributions[player] -= amount_diff
-                    eligible_players.append(player)
+                    if not player.folded():
+                        eligible_players.add(player)
                 else:
                     side_pot_amount += contributions[player]
                     contributions[player] = 0
             
             pots.append((side_pot_amount, eligible_players))
             last_amount = amount
+        
+        if final:
+            remainder_pot = self.amount - sum([pot[0] for pot in pots])
+            eligible_players = {player for player in self.contributions.keys()
+                                if contributions[player] > 0 and not player.folded()}
+            pots.append((remainder_pot, eligible_players))
 
         self.side_pots = pots
 
         return pots
-            
+    
+    def final_pots(self):
+        pots = self.split_pot(final=True)
+        return pots
 
     def next_stage(self):
         self.last_bet_raise = (None, 0)

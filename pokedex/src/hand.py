@@ -3,9 +3,17 @@ from itertools import combinations
 from treys import Card
 
 class Hand:
-    def __init__(self, cards, rank):
+    cards: list[int]
+    rank: str
+    eval: int
+
+    def __init__(self, cards, rank, eval):
+        if len(cards) != 5:
+            raise ValueError("Hand must have 5 cards")
+        
         self.cards = cards
         self.rank = rank
+        self.eval = eval
 
     def ints_to_str(hand: list[int]):
         if not hand:
