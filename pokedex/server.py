@@ -27,11 +27,15 @@ def start_game():
     global game
 
     # Define three players with preset names and stacks
+    # players = [
+    #     Player("Harry Potter", 1000),
+    #     Player("Cho Chang", 750),
+    #     Player("Luna Lovegood", 200),
+    # ]
     players = [
         Player("Harry Potter", 1000),
-        Player("Cho Chang", 750),
-        Player("Luna Lovegood", 200),
-        # Player("Ron Weasley"),
+        Player("Cho Chang", 250),
+        Player("Luna Lovegood", 1000),
     ]
     
     # Initialize a poker game with small blind of 10
@@ -41,7 +45,8 @@ def start_game():
     # Deal cards and setup the round
     round = poker.new_round()
     round.deal()
-    round.post_blinds()
+    # round.post_blinds()
+    round.set_stage(GameStage.FLOP)
 
     game = poker
     # Prepare the game state to return

@@ -204,7 +204,15 @@ class Round:
                 and player.last_action_was(Action.BIG_BLIND)):
                 actions = [Action(Action.CHECK), Action.raise_bet(self.pot.get_minimum_raise())]
             elif amount_to_call > 0:
-                actions = [Action.fold(), Action.call(amount_to_call), Action.raise_bet(self.pot.get_minimum_raise())]
+                actions = [Action.fold(), Action.call(amount_to_call)]
+                player_full_raised = player.current_round_bet() != self.pot.last_full_raise
+                if amount_to_call < player.stack and player_full_raised:
+                    # min_raise_diff = self.pot.get_minimum_raise() - player.current_round_bet()
+                    # if min_raise_diff > player.stack:
+                    #     actions.append(Action.raise_bet(player.stack))
+                    # else:
+                    #     actions.append(Action.raise_bet(self.pot.get_minimum_raise()))
+                    actions.append(Action.raise_bet(self.pot.get_minimum_raise()))
             else:
                 actions = [Action.check(), Action.bet(self.pot.minimum_bet)]
         
@@ -252,12 +260,11 @@ class Round:
 
 
     def _raise(self, player: Player, amount):
-        if amount < self.pot.get_minimum_raise():
-            print("Automatically put in min raise if value not met")
-            amount = self.pot.get_minimum_raise() 
+        if amount < self.pot.get_minimum_raise() and amount != player.stack:
+            raise ValueError("Raise amount is less than minimum raise and player is not all in")
         
         amount_raised, all_in = player.raise_bet(amount)
-        self.pot.set_last_bet_raise(player, amount)
+        self.pot.set_last_bet_raise(player, amount, all_in)
         self.pot.add(player, amount_raised)
 
         if all_in:
@@ -311,6 +318,14 @@ class Round:
         elif self.stage == GameStage.RIVER:
             self.board += self.deck.draw(1)
 
+    def set_stage(self, stage: GameStage):
+        stage_jumps = stage.value - self.stage.value
+        if stage_jumps < 0:
+            raise ValueError("Cannot go back to previous stage")
+        
+        for _ in range(stage_jumps):
+            self._next_stage()
+
     def betting_round_over(self):
         return self.stage == GameStage.ROUND_OVER
                 
@@ -325,14 +340,6 @@ class Round:
                 break
         
         return index
-    
-    def set_stage(self, stage: GameStage):
-        stage_jumps = stage.value - self.stage.value
-        if stage_jumps < 0:
-            raise ValueError("Cannot go back to previous stage")
-        
-        for _ in range(stage_jumps):
-            self._next_stage()
 
 
     def add_action(self, player: Player, action: Action):
@@ -404,9 +411,6 @@ class Round:
             for player in pot_winners[i]:
                 player.win(split)
 
-
-    def board_str(self):
-        return list(map(Card.int_to_str, self.board))
 
     def str_actions(self):
         res = ""

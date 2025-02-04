@@ -8,6 +8,7 @@ class Pot:
     betting_started: bool
     current_round_bet: int
     minimum_bet: int
+    last_full_raise: int
     contributions: dict[Player, int]
 
     def __init__(self, minimum_bet=0):
@@ -18,6 +19,7 @@ class Pot:
         self.betting_started = False
         self.current_round_bet = 0
         self.minimum_bet = minimum_bet
+        self.last_full_raise = 0
 
         self.contributions = {}
 
@@ -31,12 +33,17 @@ class Pot:
         self.current_round_bet += amount
         self.betting_started = True
     
-    def set_last_bet_raise(self, player, amount):
+    def set_last_bet_raise(self, player, amount, all_in=False):
         raise_amount = amount - self.last_bet_raise[1]
-        if raise_amount < self.min_raise_amount:
-            raise ValueError("Raise amount is less than minimum raise")
+        full_raise = raise_amount >= self.min_raise_amount
+    
+        if not full_raise and not all_in:
+            raise ValueError("Must min raise or go all in")
         
-        self.min_raise_amount = amount - self.last_bet_raise[1]
+        if full_raise:
+            self.min_raise_amount = amount - self.last_bet_raise[1]
+            self.last_full_raise = amount
+
         self.last_bet_raise = (player, amount)
     
     def get_last_bet_raise(self):
