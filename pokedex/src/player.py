@@ -60,7 +60,8 @@ class Action:
         return {
             "type": self.action_type.name,
             "amount": self.amount,
-            "amountToCall": self.amount_to_call
+            "amountToCall": self.amount_to_call,
+            "allIn": self.all_in
         }
 
     def __repr__(self):
@@ -94,7 +95,7 @@ class RoundProfile:
 
     def next_stage(self):
         self.bet = 0
-        self.last_action = None
+        self.last_action = None if not self.all_in else self.last_action
 
     def reset(self):
         self.bet = 0
@@ -158,7 +159,7 @@ class Player:
         all_in = False
         amount_to_call = self.amount_to_call(amount)
 
-        if amount_to_call > self.stack:
+        if amount_to_call >= self.stack:
             amount = self.stack
             amount_to_call = self.stack
             self.rp.all_in = True
@@ -232,7 +233,7 @@ class Player:
         return {
             "name": self.name,
             "stack": self.stack,
-            "hand": Hand.ints_to_str(self.rp.hand) if self.rp.hand else None,
+            "hand": Hand.ints_to_str(self.rp.hand),
             "action": self.rp.last_action.to_dict() if self.rp.last_action else None
         }
     

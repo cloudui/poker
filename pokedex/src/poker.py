@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from treys import Card, Deck
 
-from .hand import HandEvaluator
+from .hand import Hand, HandEvaluator
 
 from .player import Player, Action
 from .pot import Pot
@@ -39,6 +39,7 @@ class Round:
     small_blind_player: Player
     big_blind_player: Player
 
+    all_ins: list[Player]
     round_actions: dict[GameStage, list[RoundAction]]
     action_complete_players: set[Player]
 
@@ -56,7 +57,7 @@ class Round:
         self.big_blind_player = self.players[1]
         self.player_index = 0
 
-        self._current_bet_round_all_ins = {}
+        self.all_ins = []
         self.round_actions = {
             GameStage.PREFLOP: [],
             GameStage.FLOP: [],
@@ -164,6 +165,7 @@ class Round:
 
         if all_in:
             self.pot.split_pot()
+            self.all_ins.append(player)
 
     def post_blinds(self):
         sb = self.small_blind_player
@@ -209,6 +211,9 @@ class Round:
         return player, actions
 
     def player_action(self, action: Action):
+        if self.betting_round_over():
+            raise ValueError("Betting round is over")
+        
         player, actions = self.get_current_player_and_actions()
 
         if not any([action.action_type == a.action_type for a in actions]):
@@ -233,13 +238,18 @@ class Round:
         self.add_action(player, player.last_action())
 
         # determine if move to next stage
-        if len(self.players) == 1:
+        if len(self.players) == 1 or len(self.players) == len(self.all_ins):
             self.stage = GameStage.ROUND_OVER
             return
 
         if len(self.action_complete_players) == len(self.players):
+            print(self.action_complete_players)
             self._next_stage()
-        self._next_player()
+            return 
+
+        np = self._next_player()
+        while np.all_in():
+            np = self._next_player()
 
 
     def _raise(self, player: Player, amount):
@@ -253,6 +263,7 @@ class Round:
 
         if all_in:
             self.pot.split_pot()
+            self.all_ins.append(player)
     
     def _call(self, player: Player):
         call_amount = self.pot.call_amount()
@@ -262,6 +273,7 @@ class Round:
 
         if all_in:
             self.pot.split_pot()
+            self.all_ins.append(player)
     
     def _fold(self, player: Player):
         player.fold()
@@ -286,8 +298,11 @@ class Round:
         for player in self.players:
             player.next_stage()
         
-        self.action_complete_players = set()
+        self.action_complete_players = {player for player in self.players if player.all_in()}
         self.pot.next_stage()
+
+        # remaining_players = [player for player in self.players if not player.all_in()]
+        # self.players = remaining_players
 
         self.stage = GameStage(self.stage.value + 1)
         if self.stage == GameStage.FLOP:
@@ -299,15 +314,7 @@ class Round:
 
     def betting_round_over(self):
         return self.stage == GameStage.ROUND_OVER
-    
-    def handle_all_in(self, player: Player):
-        all_in_amount = player.current_round_bet()
-
-        for p in self.players:
-            pass
-        
-        
-            
+                
     
     def _player_last_action_index(self, player: Player):
         index = -1
@@ -334,7 +341,8 @@ class Round:
 
     def add_action(self, player: Player, action: Action):
         if action.action_type == Action.BET or action.action_type == Action.RAISE:
-            self.action_complete_players = {player}
+            all_ins = [p for p in self.players if p.all_in()]
+            self.action_complete_players = set(all_ins + [player])
         elif action.action_type == Action.CALL or action.action_type == Action.CHECK:
             self.action_complete_players.add(player)
 
@@ -395,6 +403,34 @@ class Round:
             res += "\n"
         
         return res
+    
+    def to_dict(self):
+
+        player, actions = self.get_current_player_and_actions()
+
+        # Prepare the game state to return
+        turn = {
+            "player": {
+                "name": player.name,
+                "stack": player.stack,
+                "hand": player.str_hand()
+            },
+            "actions": [action.to_dict() for action in actions],
+        }
+
+        players = self.players
+
+        game_state = {
+            "players": [player.to_dict() for player in players],
+            "stage": self.stage.name,
+            "pot": {
+                "amount": self.pot.amount,
+            },
+            "turn": turn,
+            "community_cards": Hand.ints_to_str(self.board),
+        }
+
+        return game_state
     
     def __repr__(self):
         res = f"Stage: {self.stage.name.capitalize()}\n"

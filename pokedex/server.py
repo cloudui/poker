@@ -22,38 +22,21 @@ CORS(app, resources={
 # Game state (preset for prototyping)
 game = None
 
-def get_turn():
-    global game
-
-    # Get the current player
-    player, actions = game.round.get_current_player_and_actions()
-
-    # Prepare the game state to return
-    turn = {
-        "player": {
-            "name": player.name,
-            "stack": player.stack,
-            "hand": player.str_hand()
-        },
-        "actions": [action.to_dict() for action in actions],
-    }
-
-    return turn
-
 @app.route('/start_game', methods=['GET'])
 def start_game():
     global game
 
     # Define three players with preset names and stacks
     players = [
-        Player("Harry Potter"),
-        Player("Cho Chang"),
-        Player("Luna Lovegood")
+        Player("Harry Potter", 1000),
+        Player("Cho Chang", 750),
+        Player("Luna Lovegood", 200),
+        # Player("Ron Weasley"),
     ]
     
     # Initialize a poker game with small blind of 10
     poker = Poker(players=players, small_blind=10)
-    poker.set_stacks(1000)
+    # poker.set_stacks(1000)
     
     # Deal cards and setup the round
     round = poker.new_round()
@@ -62,15 +45,7 @@ def start_game():
 
     game = poker
     # Prepare the game state to return
-    game_state = {
-        "players": [player.to_dict() for player in round.players],
-        "stage": round.stage.name,
-        "pot": {
-            "amount": round.pot.amount,
-        },
-        "turn": get_turn(),
-        "community_cards": Hand.ints_to_str(round.board),
-    }
+    game_state = round.to_dict()
 
     # Save the game for later interactions
 
@@ -86,15 +61,7 @@ def next_round():
     round.post_blinds()
 
     # Prepare the game state to return
-    game_state = {
-        "players": [player.to_dict() for player in round.players],
-        "stage": round.stage.name,
-        "pot": {
-            "amount": round.pot.amount,
-        },
-        "turn": get_turn(),
-        "community_cards": Hand.ints_to_str(round.board),
-    }
+    game_state = round.to_dict()
 
 
     return jsonify(game_state)
@@ -119,15 +86,7 @@ def next_turn():
     round.player_action(action)
 
     # Prepare the game state to return
-    game_state = {
-        "players": [player.to_dict() for player in round.players],
-        "stage": round.stage.name,
-        "pot": {
-            "amount": round.pot.amount,
-        },
-        "turn": get_turn(),
-        "community_cards": Hand.ints_to_str(round.board),
-    }
+    game_state = round.to_dict()
 
     if round.betting_round_over():
         players, hand, rank = round.reveal()

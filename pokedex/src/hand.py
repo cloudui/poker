@@ -7,7 +7,10 @@ class Hand:
         self.cards = cards
         self.rank = rank
 
-    def ints_to_str(hand):
+    def ints_to_str(hand: list[int]):
+        if not hand:
+            return []
+        
         return [Card.int_to_str(i) for i in hand]
     
     def __repr__(self):
