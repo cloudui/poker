@@ -21,6 +21,7 @@ type Action = {
     
     amount?: number;
     amountToCall?: number;
+    allIn?: boolean;
 }
 
 type GameTurn = {

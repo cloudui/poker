@@ -10,7 +10,7 @@
   let pot: Pot;
   let smallBlindPlayer: string;
   let bigBlindPlayer: string;
-  let turn: GameTurn;
+  let turn: GameTurn | null = null;
   let communityCards: string[] = [];
 
   let enableBet = false;
@@ -49,7 +49,7 @@
       smallBlindPlayer = data.small_blind_player;
       bigBlindPlayer = data.big_blind_player;
       turn = data.turn;
-      parseActions(turn.actions);
+      parseActions(turn!.actions);
     } catch (error) {
       console.error('Fetch error:', error);
     }
@@ -74,7 +74,7 @@
       bigBlindPlayer = data.big_blind_player;
       turn = data.turn;
       clearActions();
-      parseActions(turn.actions);
+      parseActions(turn!.actions);
     } catch (error) {
       console.error('Fetch error:', error);
     }
@@ -130,7 +130,7 @@
       pot = data.pot;
       turn = data.turn;
       clearActions();
-      parseActions(turn.actions);
+      parseActions(turn!.actions);
       winner = data.winner;
     } catch (error) {
       console.error('Fetch error:', error);
@@ -185,7 +185,9 @@ function clearActions() {
 }
 
 function actionString(action: Action) {
-  if (action.type === "CALL") {
+  if (action.allIn) {
+    return `ALL-IN ${action.amount}`;
+  } else if (action.type === "CALL") {
     return `CALL ${action.amountToCall}`;
   } else if (action.type === "BET") {
     return `BET ${action.amount}`;
@@ -224,7 +226,7 @@ function actionString(action: Action) {
         <div class="stat-value">${pot.amount}</div>
       </div>
     </div>
-    <div class="flex gap-4 mt-3 mb-5">
+    <div class="flex gap-4 mt-3 mb-3">
       {#each communityCards as card (card)}
         <Card card={card} />
       {/each}
@@ -261,6 +263,8 @@ function actionString(action: Action) {
       </div>
     {/if}
 
+
+    {#if turn}
     <h2 class="text-2xl font-bold text-center mb-2">Player Turn: {turn.player.name}</h2>
 
     
@@ -288,6 +292,7 @@ function actionString(action: Action) {
         </div>
       </div>
     </div>
+    {/if}
 
     <!-- Action List (centered buttons) -->
     <div class="flex flex-col items-center gap-5">
