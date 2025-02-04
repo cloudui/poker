@@ -40,6 +40,7 @@ class Round:
     big_blind_player: Player
 
     round_actions: dict[GameStage, list[RoundAction]]
+    action_complete_players: set[Player]
 
     def __init__(self, players: list[Player], small_blind):
         self.pot = Pot(small_blind*2)
@@ -62,6 +63,8 @@ class Round:
             GameStage.TURN: [],
             GameStage.RIVER: []
         }
+
+        self.action_complete_players = set()
 
     def start_betting_round(self):
         if self.stage == GameStage.ROUND_OVER:
@@ -209,7 +212,7 @@ class Round:
         player, actions = self.get_current_player_and_actions()
 
         if not any([action.action_type == a.action_type for a in actions]):
-            raise ValueError("Invalid action")
+            raise ValueError(f"Invalid action {action} for player {player.name}")
         
         if action.action_type == Action.FOLD:
             self._fold(player)
@@ -233,22 +236,11 @@ class Round:
         if len(self.players) == 1:
             self.stage = GameStage.ROUND_OVER
             return
-        
-        if player == self.big_blind_player and self.stage == GameStage.PREFLOP and player.last_action_was(Action.CHECK):
-            self._next_stage()
-            return
-        
-        next_player = self._next_player()
-        
-        last_player_raise, _ = self.pot.get_last_bet_raise()
-        big_blind_preflop = (next_player == self.big_blind_player 
-                             and self.stage == GameStage.PREFLOP 
-                             and next_player.last_action_was(Action.BIG_BLIND))
 
-        if ((not big_blind_preflop and last_player_raise == next_player) or 
-            (self.player_index == 0 and not self.pot.betting_started and next_player.last_action_was(Action.CHECK))):
+        if len(self.action_complete_players) == len(self.players):
             self._next_stage()
-        
+        self._next_player()
+
 
     def _raise(self, player: Player, amount):
         if amount < self.pot.get_minimum_raise():
@@ -294,6 +286,7 @@ class Round:
         for player in self.players:
             player.next_stage()
         
+        self.action_complete_players = set()
         self.pot.next_stage()
 
         self.stage = GameStage(self.stage.value + 1)
@@ -340,6 +333,11 @@ class Round:
 
 
     def add_action(self, player: Player, action: Action):
+        if action.action_type == Action.BET or action.action_type == Action.RAISE:
+            self.action_complete_players = {player}
+        elif action.action_type == Action.CALL or action.action_type == Action.CHECK:
+            self.action_complete_players.add(player)
+
         self.round_actions[self.stage].append(RoundAction(player, action))
 
     def current_stage_actions(self):
