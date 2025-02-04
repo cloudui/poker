@@ -5,7 +5,7 @@ from treys import Card, Deck
 from .hand import HandEvaluator
 
 from .player import Player, Action
-from .pot import Pot, SidePot
+from .pot import Pot
 
 
 class GameStage(Enum):
@@ -22,6 +22,9 @@ class RoundAction:
     def __init__(self, player, action):
         self.player = player
         self.action = action
+
+    def __repr__(self):
+        return f"{self.player.name}: {self.action}"
 
 class Round:
     # type definitions
@@ -151,12 +154,13 @@ class Round:
             print()
 
     def _bet(self, player: Player, amount):
-        if amount > player.stack:
-            raise ValueError("Bet exceeds player's available chips")
         player.bet(amount)
-        self.pot.add(amount)
+        all_in = self.pot.add(player, amount)
 
         self.pot.set_last_bet_raise(player, amount)
+
+        if all_in:
+            self.pot.split_pot()
 
     def post_blinds(self):
         sb = self.small_blind_player
@@ -167,8 +171,8 @@ class Round:
 
         self.pot.set_last_bet_raise(bb, self.big_blind)
 
-        self.pot.add(self.small_blind)
-        self.pot.add(self.big_blind)
+        self.pot.add(sb, self.small_blind)
+        self.pot.add(bb, self.big_blind)
 
         self.add_action(sb, Action(Action.SMALL_BLIND, self.small_blind))
         self.add_action(bb, Action(Action.BIG_BLIND, self.big_blind))
@@ -201,10 +205,8 @@ class Round:
         
         return player, actions
 
-    def player_action(self, player_name: str, action: Action):
+    def player_action(self, action: Action):
         player, actions = self.get_current_player_and_actions()
-        if player_name != player.name:
-            raise ValueError("Not the current player")
 
         if not any([action.action_type == a.action_type for a in actions]):
             raise ValueError("Invalid action")
@@ -236,9 +238,8 @@ class Round:
             self._next_stage()
             return
         
-        self._next_player()
+        next_player = self._next_player()
         
-        next_player = self.get_current_player()
         last_player_raise, _ = self.pot.get_last_bet_raise()
         big_blind_preflop = (next_player == self.big_blind_player 
                              and self.stage == GameStage.PREFLOP 
@@ -252,21 +253,23 @@ class Round:
     def _raise(self, player: Player, amount):
         if amount < self.pot.get_minimum_raise():
             print("Automatically put in min raise if value not met")
-            amount = self.pot.get_minimum_raise()
+            amount = self.pot.get_minimum_raise() 
         
         amount_raised, all_in = player.raise_bet(amount)
         self.pot.set_last_bet_raise(player, amount)
-        self.pot.add(amount_raised)
+        self.pot.add(player, amount_raised)
+
+        if all_in:
+            self.pot.split_pot()
     
     def _call(self, player: Player):
         call_amount = self.pot.call_amount()
-        amount_to_call, all_in = player.call(call_amount)
+        amount_to_call, all_in = player.call(call_amount)            
+
+        self.pot.add(player, amount_to_call)
 
         if all_in:
-            self.handle_all_in(player)
-            
-
-        self.pot.add(amount_to_call)
+            self.pot.split_pot()
     
     def _fold(self, player: Player):
         player.fold()
@@ -282,6 +285,8 @@ class Round:
         self.player_index += 1
         if self.player_index == len(self.players):
             self.player_index = 0
+        
+        return self.players[self.player_index]
 
     def _next_stage(self):
         self.player_index = 0
@@ -303,21 +308,12 @@ class Round:
         return self.stage == GameStage.ROUND_OVER
     
     def handle_all_in(self, player: Player):
-        round_actions = self.round_actions[self.stage]
-        action = player.last_action()
+        all_in_amount = player.current_round_bet()
+
+        for p in self.players:
+            pass
         
-        amount_to_call = action.amount_to_call
-        player_last_action_index = self._player_last_action_index(player)
-
-        player_pot = SidePot(0, [player])
-        side_pot = SidePot(0, [])
-        for i in range(player_last_action_index+1, len(round_actions)):
-            current_player, current_action = round_actions[i].player, round_actions[i].action
-            if current_action.action_type == Action.FOLD or current_action.action_type == Action.CHECK:
-                continue
-
-            # player_pot.add(min(current_action.amount, action.amount))
-            # side_pot.add(max(current_action.amount - action.amount, 0))
+        
             
     
     def _player_last_action_index(self, player: Player):
@@ -345,6 +341,9 @@ class Round:
 
     def add_action(self, player: Player, action: Action):
         self.round_actions[self.stage].append(RoundAction(player, action))
+
+    def current_stage_actions(self):
+        return self.round_actions[self.stage]
     
     def reveal(self):
         if not self.betting_round_over():
@@ -393,7 +392,7 @@ class Round:
 
             res += f"{stage.name}\n"
             for action in actions:
-                res += f"{action.player.name}: {action.action}\n"
+                res += f"{action}\n"
 
             res += "\n"
         

@@ -140,6 +140,8 @@ class Player:
 
         self.make_bet(amount)
         self.rp.last_action = Action(Action.BET, amount, all_in=all_in)
+
+        return all_in
     
     def fold(self):
         self.rp.folded = True
@@ -180,7 +182,7 @@ class Player:
             raise ValueError("Raise amount must be positive and less than or equal to stack")
         elif amount == self.stack:
             self.rp.all_in = True
-            
+            all_in = True
 
         self.make_bet(amount_raised)
         self.rp.last_action = Action(Action.RAISE, amount, all_in=all_in)
@@ -216,6 +218,9 @@ class Player:
     
     def last_action_was(self, action_type):
         return self.rp.last_action.action_type == action_type
+
+    def all_in(self):
+        return self.rp.all_in
  
     def next_stage(self):
         self.rp.next_stage()

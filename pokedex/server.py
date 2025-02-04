@@ -111,10 +111,12 @@ def next_turn():
     action = request.json["action"]
     player_name = request.json["player_name"]
 
+    # player verification
+
     action = Action.dict_to_action(action)
 
     # Perform the action
-    round.player_action(player_name, action)
+    round.player_action(action)
 
     # Prepare the game state to return
     game_state = {
