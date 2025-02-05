@@ -46,8 +46,8 @@ def start_game():
     # Deal cards and setup the round
     round = poker.new_round()
     round.deal()
-    # round.post_blinds()
-    round.set_stage(GameStage.FLOP)
+    round.post_blinds()
+    # round.set_stage(GameStage.FLOP)
 
     game = poker
     # Prepare the game state to return
