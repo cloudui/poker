@@ -33,7 +33,7 @@ def start_game():
     #     Player("Luna Lovegood", 200),
     # ]
     players = [
-        Player("Harry Potter", 1000),
+        Player("Tyson the Conqueror", 1000),
         Player("Lord Voldemort", 1000),
         Player("Cho Chang", 250),
         Player("Luna Lovegood", 320),

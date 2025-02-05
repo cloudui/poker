@@ -253,8 +253,9 @@ class Round:
         print("trial")
         print(len(self.players), len(self.all_ins), len(self.action_complete_players))
         if (len(self.players) == len(self.all_ins) or
-            len(self.players) == len(self.action_complete_players) and
-            len(self.players) - len(self.all_ins) == 1):
+            (len(self.players) == len(self.action_complete_players) and
+            len(self.players) - len(self.all_ins) == 1)):
+            print('Fuck')
             self.set_stage(GameStage.ROUND_OVER)
             return
 
@@ -320,9 +321,10 @@ class Round:
             self.board += self.deck.draw(1)
         
         self.player_index = 0
-        cplayer = self.get_current_player()
-        while cplayer.all_in():
-            cplayer = self._next_player()
+        if len(self.players) != len(self.all_ins):
+            cplayer = self.get_current_player()
+            while cplayer.all_in():
+                cplayer = self._next_player()
 
         for player in self.players:
             player.next_stage()
@@ -335,11 +337,13 @@ class Round:
 
     def set_stage(self, stage: GameStage):
         stage_jumps = stage.value - self.stage.value
+        print(stage_jumps)
         if stage_jumps < 0:
             raise ValueError("Cannot go back to previous stage")
         
         for _ in range(stage_jumps):
             self._next_stage()
+        print(self.stage)
 
     def betting_round_over(self):
         return self.stage == GameStage.ROUND_OVER
