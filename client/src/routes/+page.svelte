@@ -116,7 +116,7 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          player_name: turn.player.name,
+          player_name: turn!.player.name,
           action: playerAction
         })
       });
@@ -242,7 +242,7 @@ function actionString(action: Action) {
 
   <div class="container mx-auto py-6">
     {#if winner}
-      <div class="modal" open>
+      <div class="modal" role="dialog" open>
         <div class="modal-box">
           <h3 class="text-lg font-bold">Winner</h3>
           {#each winner.players as player}
