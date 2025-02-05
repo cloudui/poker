@@ -160,8 +160,6 @@ class Round:
             self.stage = GameStage.ROUND_OVER
             return
         
-        print("trial")
-        print(len(self.players), len(self.all_ins), len(self.action_complete_players))
         if (len(self.players) == len(self.all_ins) or
             (len(self.players) == len(self.action_complete_players) and
             len(self.players) - len(self.all_ins) == 1)):
