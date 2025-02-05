@@ -34,8 +34,9 @@ def start_game():
     # ]
     players = [
         Player("Harry Potter", 1000),
+        Player("Lord Voldemort", 1000),
         Player("Cho Chang", 250),
-        Player("Luna Lovegood", 1000),
+        Player("Luna Lovegood", 320),
     ]
     
     # Initialize a poker game with small blind of 10
@@ -101,7 +102,7 @@ def next_turn():
             "rank": rank
         }
 
-        round.distribute_winnings(players)
+        round.distribute_winnings()
 
 
     return jsonify(game_state)

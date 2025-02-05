@@ -245,10 +245,15 @@ class Round:
     
         self.add_action(player, player.last_action())
 
-        # determine if move to next stage
-        if len(self.players) == 1 or len(self.players) == len(self.all_ins):
+        # move to next round if all players have folded
+        if len(self.players) == 1:
             self.stage = GameStage.ROUND_OVER
             return
+        
+        if (len(self.players) == len(self.all_ins) or
+            len(self.players) == len(self.action_complete_players) and
+            len(self.players) - len(self.all_ins) == 1):
+            self.set_stage(GameStage.ROUND_OVER)
 
         if len(self.action_complete_players) == len(self.players):
             self._next_stage()
@@ -260,7 +265,7 @@ class Round:
 
 
     def _raise(self, player: Player, amount):
-        if amount < self.pot.get_minimum_raise() and amount != player.stack:
+        if amount < self.pot.get_minimum_raise() and amount < player.stack:
             raise ValueError("Raise amount is less than minimum raise and player is not all in")
         
         amount_raised, all_in = player.raise_bet(amount)
@@ -299,7 +304,22 @@ class Round:
         return self.players[self.player_index]
 
     def _next_stage(self):
+        if self.stage == GameStage.RIVER or self.stage == GameStage.ROUND_OVER:
+            self.stage = GameStage.ROUND_OVER
+            return
+
+        self.stage = GameStage(self.stage.value + 1)
+        if self.stage == GameStage.FLOP:
+            self.board += self.deck.draw(3)
+        elif self.stage == GameStage.TURN:
+            self.board += self.deck.draw(1)        
+        elif self.stage == GameStage.RIVER:
+            self.board += self.deck.draw(1)
+        
         self.player_index = 0
+        cplayer = self.get_current_player()
+        while cplayer.all_in():
+            cplayer = self._next_player()
 
         for player in self.players:
             player.next_stage()
@@ -309,14 +329,6 @@ class Round:
 
         # remaining_players = [player for player in self.players if not player.all_in()]
         # self.players = remaining_players
-
-        self.stage = GameStage(self.stage.value + 1)
-        if self.stage == GameStage.FLOP:
-            self.board += self.deck.draw(3)
-        elif self.stage == GameStage.TURN:
-            self.board += self.deck.draw(1)        
-        elif self.stage == GameStage.RIVER:
-            self.board += self.deck.draw(1)
 
     def set_stage(self, stage: GameStage):
         stage_jumps = stage.value - self.stage.value
