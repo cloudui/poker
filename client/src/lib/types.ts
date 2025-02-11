@@ -11,28 +11,28 @@ type Game = {
 };
 
 type Pot = {
-    amount: number;
-}
+  amount: number;
+};
 
 type Card = string;
 
 type Action = {
-    type: string;
-    
-    amount?: number;
-    amountToCall?: number;
-    allIn?: boolean;
-}
+  type: string;
+
+  amount?: number;
+  amountToCall?: number;
+  allIn?: boolean;
+};
 
 type GameTurn = {
-    player: Player;
-    actions: Action[];
-}
+  player: Player;
+  actions: Action[];
+};
 
 type Winner = {
-    players: Player[];
-    hand?: Card[];
-    rank?: string;
+  players: Player[];
+  hand?: Card[];
+  rank?: string;
 };
 
 // export all
