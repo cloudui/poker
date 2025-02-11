@@ -34,7 +34,12 @@
 
   async function handleStartGame() {
     try {
-      const response = await fetch("http://localhost:8000/start_game");
+      const response = await fetch("http://localhost:8000/start_game", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
