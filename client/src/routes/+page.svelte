@@ -7,43 +7,28 @@
     connectionStatus,
     startGame,
   } from "$lib/stores/gameStore";
+  import { actionState } from "$lib/stores/actionStore";
   import Card from "$lib/components/Card.svelte";
   import { actionString } from "$lib/gameUtils";
-  import type { Action } from "$lib/types";
 
-  let playerName = "Tyson the Conqueror"; // Change dynamically in real app
-
-  // actions
-  let enableBet = false;
-  let enableRaise = false;
-  let enableFold = false;
-  let enableCheck = false;
-  let enableCall = false;
-
-  let betAction: Action | null = {
-    type: "bet",
-    amount: 0,
+  let data = {
+    playerName: "admin"
   };
-  let raiseAction: Action | null = {
-    type: "raise",
-    amount: 0,
-  }
-  let foldAction: Action | null = null;
-  let checkAction: Action | null = null;
-  let callAction: Action | null = {
-    type: "call",
-    amountToCall: 69,
-  };
+
   let playerActionAmount = "";
 
   // Connect WebSocket on component mount
   onMount(() => {
-    connectWebSocket(playerName);
+    connectWebSocket(data.playerName);
   });
 
   // Function to send player action (example)
   function handleAction(actionType: string) {
-    sendPlayerAction(playerName, { type: actionType });
+    const action = {
+      type: actionType,
+      amount: parseInt(playerActionAmount),
+    };
+    sendPlayerAction($gameState?.turn.player.name || "", action);
     playerActionAmount = "";
   }
 </script>
@@ -51,7 +36,7 @@
 <main>
 
   <div class="page max-w-4xl mx-auto pt-8">
-    <h1 class="text-3xl font-bold mb-1">Poker Game</h1>
+    <h1 class="text-3xl font-bold mb-1">Poker</h1>
     <div class="mb-3">
       {#if $connectionStatus === "connected"}
         <div class="badge badge-success">connected</div>
@@ -115,44 +100,42 @@
             </div>
           </dialog>
         {/if}
+        
+        <h2 class="text-2xl font-bold text-center mb-2">
+          Player Turn: {$gameState.turn.player.name}
+        </h2>
 
-        {#if $gameState.turn}
-          <h2 class="text-2xl font-bold text-center mb-2">
-            Player Turn: {$gameState.turn.player.name}
-          </h2>
-
-          <div class="card shadow-lg bg-base-100">
-            <div
-              class="card-body flex flex-col sm:flex-row items-center justify-between"
-            >
-              <!-- User Info -->
-              <div class="flex items-center gap-4">
-                <div class="avatar">
-                  <div
-                    class="w-12 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2"
-                  >
-                    <img
-                      src="https://api.dicebear.com/6.x/bottts/svg?seed={$gameState.turn
-                        .player.name}"
-                      alt={$gameState.turn.player.name}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <h2 class="card-title">{$gameState.turn.player.name}</h2>
-                  <p class="text-sm text-gray-500">Stack: ${$gameState.turn.player.stack}</p>
+        <div class="card shadow-lg bg-base-100">
+          <div
+            class="card-body flex flex-col sm:flex-row items-center justify-between"
+          >
+            <!-- User Info -->
+            <div class="flex items-center gap-4">
+              <div class="avatar">
+                <div
+                  class="w-12 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2"
+                >
+                  <img
+                    src="https://api.dicebear.com/6.x/bottts/svg?seed={$gameState.turn
+                      .player.name}"
+                    alt={$gameState.turn.player.name}
+                  />
                 </div>
               </div>
-
-              <!-- Cards -->
-              <div class="flex gap-2 mt-4 sm:mt-0">
-                {#each $gameState.turn.player.hand as card (card)}
-                  <Card {card} />
-                {/each}
+              <div>
+                <h2 class="card-title">{$gameState.turn.player.name}</h2>
+                <p class="text-sm text-gray-500">Stack: ${$gameState.turn.player.stack}</p>
               </div>
             </div>
+
+            <!-- Cards -->
+            <div class="flex gap-2 mt-4 sm:mt-0">
+              {#each $gameState.turn.player.hand as card (card)}
+                <Card {card} />
+              {/each}
+            </div>
           </div>
-        {/if}
+        </div>
 
         <!-- Action List (centered buttons) -->
         <div class="flex flex-col items-center gap-5">
@@ -160,31 +143,31 @@
             <button
               type="button"
               class="btn btn-neutral"
-              disabled={!enableBet}
+              disabled={!$actionState.bet}
               on:click={() => handleAction("bet")}
             >
-              Bet (min ${betAction ? betAction.amount : ""})
+              Bet (min ${$actionState.bet ? $actionState.bet.amount : ""})
             </button>
             <button
               type="button"
               class="btn"
-              disabled={!enableCall}
+              disabled={!$actionState.call}
               on:click={() => handleAction("call")}
             >
-              Call (${callAction ? callAction.amountToCall : ""})
+              Call (${$actionState.call ? $actionState.call.amountToCall : ""}) 
             </button>
             <button
               type="button"
               class="btn btn-primary"
-              disabled={!enableRaise}
+              disabled={!$actionState.raise}
               on:click={() => handleAction("raise")}
             >
-              Raise (${raiseAction ? raiseAction.amount : ""})
+              Raise (${$actionState.raise ? $actionState.raise.amount: ""})
             </button>
             <button
               type="button"
               class="btn btn-secondary"
-              disabled={!enableFold}
+              disabled={!$actionState.fold}
               on:click={() => handleAction("fold")}
             >
               Fold
@@ -192,7 +175,7 @@
             <button
               type="button"
               class="btn btn-accent"
-              disabled={!enableCheck}
+              disabled={!$actionState.check}
               on:click={() => handleAction("check")}
             >
               Check
@@ -205,6 +188,7 @@
             bind:value={playerActionAmount}
           />
         </div>
+
       </div>
 
       <div class="container mx-auto py-6">

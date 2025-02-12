@@ -36,7 +36,7 @@
 <main>
 
   <div class="page max-w-4xl mx-auto pt-8">
-    <h1 class="text-3xl font-bold mb-1">Poker Game</h1>
+    <h1 class="text-3xl font-bold mb-1">Poker</h1>
     <div class="mb-3">
       {#if $connectionStatus === "connected"}
         <div class="badge badge-success">connected</div>
