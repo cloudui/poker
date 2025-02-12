@@ -128,11 +128,13 @@ class Round:
         
         return player, actions
 
-    def player_action(self, action: Action):
+    def player_action(self, action: Action, player_name=None):
         if self.betting_round_over():
             raise ValueError("Betting round is over")
         
         player, actions = self.get_current_player_and_actions()
+        if player_name and player_name != player.name:
+            raise ValueError("Not player's turn")
 
         if not any([action.action_type == a.action_type for a in actions]):
             raise ValueError(f"Invalid action {action} for player {player.name}")
