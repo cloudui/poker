@@ -51,8 +51,8 @@ class Action:
     def dict_to_action(cls, action_dict):
         type_string = action_dict["type"].upper()
         action_type = ActionType[type_string]
-        amount = action_dict["amount"]
-        amount_to_call = action_dict["amountToCall"]
+        amount = action_dict["amount"] if "amount" in action_dict else None
+        amount_to_call = action_dict["amountToCall"] if "amountToCall" in action_dict else None
 
         return cls(action_type, amount, amount_to_call)
     
