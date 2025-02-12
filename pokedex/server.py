@@ -37,10 +37,8 @@ async def start_game():
     global game
 
     players = [
-        Player("Tyson the Conqueror", 1000),
-        Player("Lord Voldemort", 1000),
-        Player("Cho Chang", 250),
-        Player("Luna Lovegood", 320),
+        Player("emily", 1000),
+        Player("eric", 1000),
     ]
     
     poker = Poker(players=players, small_blind=10)
@@ -50,6 +48,8 @@ async def start_game():
 
     game = poker
     game_state = round.to_dict()
+
+    await broadcast_game_state(game_state)
 
     return game_state
 
@@ -88,7 +88,7 @@ async def next_turn(action_data: PlayerAction):
         round.distribute_winnings()
 
     # Broadcast update to all players
-    await broadcast_game_state(game_state)
+    # await broadcast_game_state(game_state)
 
     return game_state
 
@@ -109,9 +109,10 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
 
             # Validate action format
             if "action" not in action_data or "player_name" not in action_data:
+                print("Invalid action format")
                 continue
 
-            player_name = action_data["player_name"]
+            action_player = action_data["player_name"]
             action_dict = action_data["action"]
 
             if game:
@@ -119,7 +120,7 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
                 action = Action.dict_to_action(action_dict)
                 
                 # Process the player's action
-                round.player_action(action)
+                round.player_action(action, player_name=action_player)
                 game_state = round.to_dict()
 
                 # Check if betting round is over
