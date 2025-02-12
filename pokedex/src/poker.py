@@ -318,6 +318,10 @@ class Round:
     def distribute_winnings(self):
         if not self.betting_round_over():
             raise ValueError("Cannot distribute winnings before the river")
+
+        if len(self.players) == 1:
+            self.players[0].win(self.pot.amount)
+            return
         pots = self.pot.final_pots()
         player_rankings = [x[1] for x in self.get_hand_rankings()]
         pot_winners = []
