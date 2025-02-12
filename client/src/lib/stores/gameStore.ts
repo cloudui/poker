@@ -1,13 +1,15 @@
 import { writable } from "svelte/store";
 import type {
   Player,
-  Game,
+  // Game,
   Pot,
   Card,
-  Action,
+  // Action,
   GameTurn,
   Winner,
+  Action,
 } from "$lib/types";
+import { parseActions } from "./actionStore"
 
 // Define TypeScript types for game state and WebSocket connection
 export interface GameState {
@@ -35,7 +37,7 @@ export async function startGame() {
           throw new Error("Failed to start game");
       }
       const data = await res.json();
-      gameState.set(data);
+      updateGame(data);
   } catch (error) {
       console.error("Error starting game:", error);
   }
@@ -60,8 +62,8 @@ export function connectWebSocket(playerName: string): void {
   socket.onmessage = (event: MessageEvent) => {
     try {
       const data: GameState = JSON.parse(event.data);
-      console.log("Game update:", data);
-      gameState.set(data);
+      console.log("Received WebSocket message:", data);
+      updateGame(data);
     } catch (error) {
       console.error("Failed to parse WebSocket message:", error);
     }
@@ -85,11 +87,20 @@ export function connectWebSocket(playerName: string): void {
  */
 export function sendPlayerAction(
   playerName: string,
-  action: { type: string; amount?: number }
+  action: Action
 ): void {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ player_name: playerName, action }));
+
+    socket.send(JSON.stringify({ 
+      player_name: playerName, 
+      action: action
+    }));
   } else {
     console.error("WebSocket is not open.");
   }
+}
+
+export function updateGame(data: GameState) {
+  gameState.set(data);
+  parseActions(data.turn.actions);
 }
